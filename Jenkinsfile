@@ -29,22 +29,26 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t appgestion-backend:1.0 backend'
+                sh '''
+                    docker build -t backend-app:latest backend
+                    docker tag backend-app:latest itafhaamdi/backend-app:latest
+                '''
             }
         }
 
-        stage('Docker Deploy') {
+        stage('Docker Push') {
             steps {
-                sh '''
-                    docker rm -f appgestion-test || true
-
-                    docker run -d \
-                        --name appgestion-test \
-                        --network itaf-stack_default \
-                        -p 8081:8080 \
-                        -e SPRING_DATASOURCE_URL="jdbc:mysql://mysql-db:3306/test_db?createDatabaseIfNotExist=true" \
-                        appgestion-backend:1.0
-                '''
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push itafhaamdi/backend-app:latest
+                        docker logout
+                    '''
+                }
             }
         }
     }
